@@ -36,11 +36,11 @@
             </ItemsControl>
         </StackPanel>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 10 0 0">
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 10 0 0">
             <Button Content="Wczytaj Quiz" Command="{Binding LoadQuizCommand}" Margin="10"/>
             <Button Content="Rozpocznij" Command="{Binding StartQuizCommand}" Margin="10"/>
             <Button Content="Zakończ" Command="{Binding FinishQuizCommand}" Margin="10"/>
-            <Button Content="Następne pytanie" Command="{Binding NextQuestionCommand }" Margin="10"/>
+            <Button Content="Następne pytanie" Command="{Binding NextQuestionCommand}" Margin="10"/>
         </StackPanel>
     </Grid>
 </Window>

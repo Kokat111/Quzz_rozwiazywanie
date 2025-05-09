@@ -22,6 +22,7 @@ namespace Quzz_rozwiazywanie.ViewModels
         private System.Timers.Timer _quizTimer;
         private TimeSpan _elapsedTime;
         private string _selectedQuizName;
+        private int _remainingTime;
 
         public ObservableCollection<string> QuizNames { get; set; } = new();
         public string SelectedQuizName
@@ -35,7 +36,8 @@ namespace Quzz_rozwiazywanie.ViewModels
 
         public string CurrentQuestion => _quiz?.Questions[_currentQuestionIndex].QuestionText ?? "";
         public string Title => _quiz?.QuizName ?? "";
-        public string TimeDisplay => _elapsedTime.ToString(@"mm\:ss");
+        public string TimeDisplay => _remainingTime.ToString("D2") + " sek";
+
 
         public bool IsQuizStarted { get; private set; }
         public bool IsQuizFinished { get; private set; }
@@ -47,16 +49,12 @@ namespace Quzz_rozwiazywanie.ViewModels
 
         public QuizViewModel()
         {
-            LoadQuizCommand = new RelayCommand(LoadQuiz);
+            LoadQuizCommand = new RelayCommand(LoadQuiz, () => !IsQuizStarted);
             StartQuizCommand = new RelayCommand(StartQuiz, () => _quiz != null && !IsQuizStarted);
             FinishQuizCommand = new RelayCommand(FinishQuiz, () => IsQuizStarted);
-            NextQuestionCommand = new RelayCommand(NextQuestion);
+            NextQuestionCommand = new RelayCommand(NextQuestion, () => IsQuizStarted);
             _quizTimer = new System.Timers.Timer(1000);
-            _quizTimer.Elapsed += (s, e) =>
-            {
-                _elapsedTime = _elapsedTime.Add(TimeSpan.FromSeconds(1));
-                OnPropertyChanged(nameof(TimeDisplay));
-            };
+            _quizTimer.Elapsed += QuizTimerElapsed;
             LoadQuizNames();
         }
 
@@ -101,6 +99,7 @@ namespace Quzz_rozwiazywanie.ViewModels
             }
         }
 
+
         private bool ValidateQuiz(Quiz quiz, out string error)
         {
             error = "";
@@ -144,18 +143,54 @@ namespace Quzz_rozwiazywanie.ViewModels
         {
             IsQuizStarted = true;
             IsQuizFinished = false;
-            _elapsedTime = TimeSpan.Zero;
-            _quizTimer.Start();
+            if (_quizTimer == null)
+            {
+                _quizTimer = new System.Timers.Timer();
+                _quizTimer.Interval = 1000; // 1 sekunda
+                _quizTimer.AutoReset = true;
+                _quizTimer.Elapsed += QuizTimerElapsed;
+            }
+            StartQuestionTimer(_quiz.Questions[_currentQuestionIndex].Time);
 
             OnPropertyChanged(nameof(IsQuizStarted));
             OnPropertyChanged(nameof(IsQuizFinished));
+        }
+        private void StartQuestionTimer(int seconds)
+        {
+            _quizTimer.Stop();
+            _remainingTime = seconds;
+
+            OnPropertyChanged(nameof(TimeDisplay));
+            _quizTimer.Start();
+        }
+        private void QuizTimerElapsed(object sender, ElapsedEventArgs e)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                _remainingTime--;
+                OnPropertyChanged(nameof(TimeDisplay));
+
+                if (_remainingTime <= 0)
+                {
+                    _quizTimer.Stop();
+
+                    if (_currentQuestionIndex < _quiz.Questions.Count - 1)
+                    {
+                        NextQuestion();
+                    }
+                    else
+                    {
+                        FinishQuiz();
+                    }
+                }
+            });
         }
         private void NextQuestion()
         {
             if (_currentQuestionIndex < _quiz.Questions.Count - 1)
             {
                 _currentQuestionIndex++;
-                _elapsedTime = TimeSpan.Zero;
+                StartQuestionTimer(_quiz.Questions[_currentQuestionIndex].Time);
 
                 OnPropertyChanged(nameof(CurrentQuestion));
                 OnPropertyChanged(nameof(CurrentAnswers));
