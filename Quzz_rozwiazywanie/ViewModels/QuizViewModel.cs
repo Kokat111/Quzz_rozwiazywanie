@@ -77,15 +77,37 @@ namespace Quzz_rozwiazywanie.ViewModels
 
                 var encryptedText = DatabaseHelper.LoadEncryptedQuizJson(SelectedQuizName);
                 var json = CaesarCipher.Decrypt(encryptedText, 2);
-                var loadedQuiz = JsonSerializer.Deserialize<Quiz>(json);
+                var loadedQuestions = JsonSerializer.Deserialize<ObservableCollection<QuestionsCollection>>(json);
 
-                if (!ValidateQuiz(loadedQuiz, out string error))
+                if (loadedQuestions == null)
                 {
-                    MessageBox.Show($"Błąd walidacji quizu:\n{error}");
+                    MessageBox.Show("Błąd podczas deserializacji quizu.");
                     return;
                 }
 
-                _quiz = loadedQuiz;
+                // Mapowanie z QuestionsCollection do Question
+                var questionList = loadedQuestions.Select(qc => new Question
+                {
+                    QuestionText = qc.Question,
+                    Time = int.Parse(qc.AnswerTime),
+                    Answers = new List<Answer>
+    {
+        new Answer { AnswerText = qc.Answer1, IsCorrect = qc.IsCorrectAnswer1, IsSelected = false },
+        new Answer { AnswerText = qc.Answer2, IsCorrect = qc.IsCorrectAnswer2, IsSelected = false },
+        new Answer { AnswerText = qc.Answer3, IsCorrect = qc.IsCorrectAnswer3, IsSelected = false },
+        new Answer { AnswerText = qc.Answer4, IsCorrect = qc.IsCorrectAnswer4, IsSelected = false }
+    }
+                }).ToList();
+
+
+
+                // Przypisanie do quizu
+                _quiz = new Quiz
+                {
+                    QuizName = SelectedQuizName,
+                    Questions = questionList
+                };
+
                 _currentQuestionIndex = 0;
                 _elapsedTime = TimeSpan.Zero;
 
@@ -98,6 +120,8 @@ namespace Quzz_rozwiazywanie.ViewModels
                 MessageBox.Show($"Błąd podczas wczytywania quizu:\n{ex.Message}");
             }
         }
+
+
 
 
         private bool ValidateQuiz(Quiz quiz, out string error)
